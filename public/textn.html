@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Generator</title>
+    <style>
+        /* Button styling */
+        button {
+            background-color: black;
+            color: white;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+
+        /* Mobile screen styling */
+        @media (max-width: 428px) {
+            button {
+                font-size: 18px; /* Increase the font-size for mobile screens */
+                width: 100%; /* Make the button width 100% on mobile screens */
+            }
+            
+            textarea {
+                width: 100%; /* Make the textarea width 100% on mobile screens */
+                font-size: 20px; /* Increase the font-size for mobile screens */
+            }
+        }
+
+        /* Add Bebas Neue font from Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+        body {
+            font-family: 'Bebas Neue', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Generator</h1>
+    <form action="/submit" method="POST">
+        <textarea name="text" rows="10" cols="50" placeholder="Enter text"></textarea>
+        <br>
+        <button type="submit">Generate PDF</button>
+    </form>
+</body>
+</html>

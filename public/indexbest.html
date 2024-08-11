@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Gemini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .video-slideshow {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 20px;
+        }
+        .video-slide {
+            flex: 0 0 100%;
+            scroll-snap-align: start;
+            padding: 10px;
+        }
+        .video-slide iframe {
+            width: 100%;
+            height: 315px;
+        }
+        .processing {
+            display: none;
+            font-size: 1.25rem;
+            color: #333;
+        }
+        .processing.active {
+            display: block;
+        }
+        .option-btn.active {
+            background-color: black;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold text-gray-900">Gemininote</h1>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow">
+            <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                <div class="px-4 py-6 sm:px-0">
+                    <div id="output" class="border-4 border-dashed border-gray-200 rounded-lg h-96 overflow-auto p-4">
+                        <p id="processing" class="processing">Processing PDF...</p>
+                        <p id="initialText" class="text-gray-500 text-xl">Upload a PDF to generate insights using Gemini AI.</p>
+                    </div>
+
+                    <!-- Button for PDF Download -->
+                    <div id="pdfButtonContainer" class="mt-4 hidden">
+                        <button id="downloadPdfButton" class="px-4 py-2 bg-black text-white rounded-md">Download PDF</button>
+                    </div>
+
+                    <!-- Input Box -->
+                    <div class="mt-8 bg-white rounded-lg shadow p-4">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <input type="file" id="fileInput" name="file" accept=".pdf,.jpg,.jpeg,.png,.mp3,.mp4,.wav,.avi,.mkv" class="w-full p-2 border border-gray-300 rounded-md" />
+
+                            <!-- Additional Input Field -->
+                            <input type="text" id="userInput" name="userInput" placeholder="Additional input (optional)" class="w-full p-2 border border-gray-300 rounded-md mt-4" />
+                            
+                            <!-- Options Selection -->
+                            <div class="mt-4 flex space-x-4">
+                                <button type="button" class="option-btn px-4 py-2 border border-gray-300 rounded-md" data-option="quiz">Quiz</button>
+                                <button type="button" class="option-btn px-4 py-2 border border-gray-300 rounded-md" data-option="notes">Notes</button>
+                                <button type="button" class="option-btn px-4 py-2 border border-gray-300 rounded-md" data-option="teach">Teach</button>
+                            </div>
+
+                            <!-- Quiz Size Slider -->
+                            <div id="quizSizeContainer" class="mt-4 hidden">
+                                <label for="quizSize" class="block text-sm font-medium text-gray-700">Number of Questions:</label>
+                                <input type="range" id="quizSize" name="quizSize" min="1" max="50" value="10" class="w-full">
+                                <span id="quizSizeValue" class="text-sm text-gray-500">5</span>
+                            </div>
+
+                            <input type="hidden" id="selectedOption" name="option" value="">
+
+                            <div class="mt-4 flex justify-end">
+                                <button type="submit" class="px-4 py-2 bg-black text-white rounded-md">Process File with Gemini →</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center">
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-500 hover:text-gray-700">FAQ</a>
+                        <a href="#" class="text-gray-500 hover:text-gray-700">Terms</a>
+                        <a href="#" class="text-gray-500 hover:text-gray-700">AI Policy</a>
+                        <a href="#" class="text-gray-500 hover:text-gray-700">Privacy</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const optionButtons = document.querySelectorAll('.option-btn');
+        const selectedOptionInput = document.getElementById('selectedOption');
+        const quizSizeContainer = document.getElementById('quizSizeContainer');
+        const quizSizeSlider = document.getElementById('quizSize');
+        const quizSizeValue = document.getElementById('quizSizeValue');
+        const processingIndicator = document.getElementById('processing');
+        const initialText = document.getElementById('initialText');
+        const outputElement = document.getElementById('output');
+        const downloadPdfButton = document.getElementById('downloadPdfButton');
+        const pdfButtonContainer = document.getElementById('pdfButtonContainer');
+
+        let processedText = '';
+
+        optionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                optionButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                selectedOptionInput.value = button.dataset.option;
+                
+                if (button.dataset.option === 'quiz') {
+                    quizSizeContainer.classList.remove('hidden');
+                    pdfButtonContainer.classList.add('hidden');
+                } else if (button.dataset.option === 'notes' || button.dataset.option === 'teach') {
+                    quizSizeContainer.classList.add('hidden');
+                    pdfButtonContainer.classList.remove('hidden');
+                } else {
+                    quizSizeContainer.classList.add('hidden');
+                    pdfButtonContainer.classList.add('hidden');
+                }
+            });
+        });
+
+        quizSizeSlider.addEventListener('input', () => {
+            quizSizeValue.textContent = quizSizeSlider.value;
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            processingIndicator.classList.add('active');
+            initialText.style.display = 'none';
+
+            const formData = new FormData();
+            const fileInput = document.getElementById('fileInput');
+            formData.append('userInput', document.getElementById('userInput').value);
+            formData.append('option', selectedOptionInput.value);
+            formData.append('quizSize', quizSizeSlider.value);
+
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    let outputHtml = '';
+                    if (result.videoUrls && result.videoUrls.length > 0) {
+                        outputHtml += '<div class="video-slideshow">';
+                        result.videoUrls.forEach(url => {
+                            outputHtml += `
+                                <div class="video-slide">
+                                    <iframe src="${url}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                </div>
+                            `;
+                        });
+                        outputHtml += '</div>';
+                    }
+                    outputHtml += `<div>${result.output}</div>`;
+                    outputElement.innerHTML = outputHtml;
+
+                    processedText = result.processedText;
+
+                    if (selectedOptionInput.value === 'notes' || selectedOptionInput.value === 'teach') {
+                        pdfButtonContainer.classList.remove('hidden');
+                    } else {
+                        pdfButtonContainer.classList.add('hidden');
+                    }
+                } else {
+                    outputElement.innerHTML = `<p class="text-red-500">${result.error}</p>`;
+                }
+            } catch (error) {
+                outputElement.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+            } finally {
+                processingIndicator.classList.remove('active');
+            }
+        });
+
+        downloadPdfButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/generate-pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: processedText })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'output.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                } else {
+                    alert('Failed to generate PDF');
+                }
+            } catch (error) {
+                alert('Error generating PDF: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
